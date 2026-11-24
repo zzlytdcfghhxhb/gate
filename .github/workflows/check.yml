@@ -1,12 +1,5 @@
 name: VPN Gate Node Check
 
-# 模板仓库默认不配置定时任务：需要自动更新时，把下面的注释替换成你自己的 cron。
-# 注意：GitHub 调度最小间隔约 5 分钟，但通常会延迟几分钟；仓库连续 60 天无提交会让定时任务自动停用。
-#
-# on:
-#   schedule:
-#     - cron: '*/30 * * * *'
-
 on:
   schedule:
     - cron: "0 0 * * *"
@@ -38,9 +31,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -90,7 +81,6 @@ jobs:
           fi
 
           if [ "${status}" = "404" ]; then
-            # 创建站点必须用 POST，且 workflow 构建类型不接受 source 字段
             create=$(curl -sS -o /tmp/pages-create.json -w '%{http_code}' -X POST \
               "${auth[@]}" -H "Content-Type: application/json" \
               -d '{"build_type":"workflow"}' "${api}")
@@ -121,6 +111,20 @@ jobs:
         with:
           path: public
 
+  deploy:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    permissions:
+      pages: write
+      id-token: write
+
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
